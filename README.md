@@ -1,34 +1,22 @@
-Ex.No.6 Development of Python Code Compatible with Multiple AI Tools
+## Ex.No.6: Development of Python Code Compatible with Multiple AI Tools
 
 Date: 3-11-2025
-Register no.: 212223230083
+Register No.: 212223230083
+# Aim:To write and implement Python code that integrates with multiple AI tools (such as OpenAI GPT, Hugging Face, and Google Gemini) to automate API interactions, compare outputs, and generate actionable insights.
+# AI Tools & Services Utilized
+OpenAI GPT-3.5/4: For text processing and summarization.
+Hugging Face Transformers: For sentiment analysis.
+Amazon Warehouse API (Simulated): To provide source data (robot alerts).
+# Python Implementation
+The solution is structured into modular functions for data fetching, AI processing, and insight generation.Note: The complete, runnable script is formed by combining all the snippets below.1. Imports and Setupimport random
+import openai
+from transformers import pipeline
 
-Aim:
-
-To write and implement Python code that integrates with multiple AI tools (such as OpenAI GPT, Hugging Face, and Google Gemini) to automate API interactions, compare outputs, and generate actionable insights.
-
-AI Tools Required:
-
-OpenAI GPT-3.5/4 (Text Processing)
-
-Hugging Face Transformers (Sentiment Analysis)
-
-Amazon Warehouse API (Simulated)
-
-Algorithm & Implementation
-
-The implementation is broken into four distinct functional parts.
-
-1. API Data Fetching (Simulated)
-
-A mock function simulates an API call to a warehouse management system, returning a list of robot alerts and a general system status.
-
-import random
-
-def fetch_warehouse_data():
-    """
-    Simulates fetching data from a warehouse API.
-    """
+# Suppress warnings from Hugging Face pipeline on first run
+import warnings
+warnings.filterwarnings("ignore", message="No model was supplied")
+2. API Data Fetching (Simulated)A mock function simulates fetching real-time data from a warehouse API.def fetch_warehouse_data():
+    """Simulates fetching alerts from a warehouse API."""
     return {
         "robot_alerts": [
             "Collision alert in Aisle B3",
@@ -37,180 +25,119 @@ def fetch_warehouse_data():
         ],
         "status": random.choice(["Operational", "Maintenance_Needed"])
     }
-
-
-2. AI Tools Integration
-
-Two different AI models are used for processing:
-
-Hugging Face Transformers: A pre-trained sentiment analysis model is used to classify each alert (e.g., as NEGATIVE or POSITIVE).
-
-OpenAI GPT: A large language model is used to provide a high-level summary of all alerts combined.
-
-from transformers import pipeline
-import openai
-
-# Hugging Face Sentiment Analysis
+3. AI Tools IntegrationFunctions to interact with the Hugging Face and OpenAI APIs.# Hugging Face Sentiment Analysis
 def analyze_sentiment(texts):
-    """
-    Analyzes the sentiment of a list of texts using Hugging Face.
-    """
-    # Using a specific model to ensure it's available
-    analyzer = pipeline("sentiment-analysis", model="distilbert-base-uncased-finetuned-sst-2-english")
+    """Analyzes the sentiment of a list of alert texts."""
+    # In a real app, you would load this model once at startup.
+    analyzer = pipeline("sentiment-analysis")
     return [analyzer(text)[0] for text in texts]
 
 # OpenAI Summarization
 def generate_summary(text, api_key):
-    """
-    Generates a summary of the text using the OpenAI API.
-    """
-    # Note: Ensure you are using the correct client for your 'openai' library version.
-    # This example assumes version < 1.0.0
-    # For versions 1.0.0+, the client is initialized differently:
-    # client = openai.OpenAI(api_key=api_key)
-    # response = client.chat.completions.create(...)
-    
+    """Generates a concise summary of all alerts using OpenAI."""
     openai.api_key = api_key
     try:
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
-            messages=[{"role":"user", "content":f"Summarize these alerts: {text}"}]
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant that summarizes warehouse alerts."},
+                {"role": "user", "content": f"Summarize these alerts concisely: {text}"}
+            ]
         )
         return response.choices[0].message['content']
     except Exception as e:
-        print(f"Error calling OpenAI: {e}")
+        print(f"Error calling OpenAI API: {e}")
         return "Summary generation failed."
-
-
-3. Comparison & Insight Generation
-
-A simple logic function aggregates the AI-processed data to generate a final, actionable recommendation.
-
-def generate_insights(data, sentiments, summary):
-    """
-    Generates actionable insights based on data and AI analysis.
-    """
-    critical = sum(1 for s in sentiments if s['label']=='NEGATIVE')
+4. Comparison & Insight GenerationThis function synthesizes the data from all sources into an actionable recommendation.def generate_insights(data, sentiments, summary):
+    """Generates actionable insights based on AI analysis."""
+    # Count critical alerts (defined as NEGATIVE sentiment)
+    critical = sum(1 for s in sentiments if s['label'] == 'NEGATIVE')
     
-    recommendation = "Routine check"
-    if critical > 1 or data["status"] == "Maintenance_Needed":
-        recommendation = "Immediate maintenance required"
-        
+    # Generate a recommendation
+    if data["status"] == "Maintenance_Needed":
+        recommendation = "Immediate maintenance required (System status abnormal)."
+    elif critical > 1:
+        recommendation = "Immediate maintenance recommended (Multiple critical alerts)."
+    else:
+        recommendation = "Routine check. System is operational."
+
     return {
-        "critical_alerts": critical,
+        "critical_alerts_count": critical,
         "operational_status": data["status"],
         "ai_summary": summary,
         "recommendation": recommendation
     }
+5. Complete Workflow (Main)The main function ties all components together, executes the workflow, and prints a formatted report.def main():
+    # --- IMPORTANT ---
+    # Set your API key here or via an environment variable
+    OPENAI_API_KEY = "YOUR_OPENAI_API_KEY_HERE" 
+    
+    if OPENAI_API_KEY == "YOUR_OPENAI_API_KEY_HERE":
+        print("="*40)
+        print("!!! WARNING !!!")
+        print("Please set your OpenAI API key in the")
+        print("main() function of the script to run.")
+        print("="*40)
+        return
 
-
-4. Complete Workflow
-
-The main function orchestrates the entire process: fetch data, process with AI, generate insights, and print the final report.
-
-def main():
     # 1. Fetch Data
+    print("Fetching warehouse data...")
     data = fetch_warehouse_data()
-    alerts = data["robot_alerts"]
+    alerts_text = "\n".join(data["robot_alerts"])
     
     # 2. AI Processing
-    print("Analyzing sentiments...")
-    sentiments = analyze_sentiment(alerts)
+    print("Analyzing alert sentiments...")
+    sentiments = analyze_sentiment(data["robot_alerts"])
     
-    print("Generating summary...")
-    # --- IMPORTANT ---
-    # Replace "your_openai_key" with your actual OpenAI API key
-    # It's safer to use an environment variable (os.environ.get("OPENAI_API_KEY"))
-    summary = generate_summary("\n".join(alerts), "your_openai_key")
+    print("Generating AI summary...")
+    summary = generate_summary(alerts_text, OPENAI_API_KEY)
     
     # 3. Generate Insights
     insights = generate_insights(data, sentiments, summary)
     
-    # 4. Display Results
+    # 4. Display Formatted Results
     print("\n" + "="*30)
-    print("=== Warehouse AI Report ===")
-    print("="*30 + "\n")
-    print(f"Operational Status: {insights['operational_status']}\n")
+    print("   Warehouse AI Report   ")
+    print("="*30)
     
-    print("--- Individual Alerts ---")
-    for alert, sentiment in zip(alerts, sentiments):
-        print(f"  [{sentiment['label']}] {alert} (Score: {sentiment['score']:.2f})")
+    print("\n[Raw Alerts & Sentiment]")
+    for alert, sentiment in zip(data["robot_alerts"], sentiments):
+        print(f"  - {alert} ({sentiment['label']} | Score: {sentiment['score']:.2f})")
     
-    print("\n--- AI Summary ---")
-    print(f"  {insights['ai_summary']}")
+    print(f"\n[Operational Status]")
+    print(f"  - {insights['operational_status']}")
+
+    print(f"\n[AI Summary]")
+    print(f"  - {insights['ai_summary']}")
     
-    print("\n--- Recommendation ---")
-    print(f"  >>> {insights['recommendation']} <<<")
+    print(f"\n[Actionable Recommendation]")
+    print(f"  - {insights['recommendation']}")
+    print("="*30)
 
 if __name__ == "__main__":
     main()
-
-
-Execution Steps:
-
-Install dependencies:
-
-pip install transformers torch openai
-
-
-(Note: torch is required by Hugging Face Transformers)
-
-Set OpenAI API key:
-Find the line summary = generate_summary(...) in the script and replace "your_openai_key" with your valid OpenAI API key.
-
-Run script:
-
-python warehouse_ai.py
-
-
-Input Prompt:
-
-"Write a Python program that fetches simulated warehouse robot alert data, uses Hugging Face Transformers to analyze sentiment for each alert, and uses OpenAI GPT (via API) to summarize the alerts. Based on sentiment and operational status, generate maintenance recommendations. The output should display individual alerts with sentiment scores, a summary of events, and a final recommendation. Use a modular structure with clearly defined functions for data fetching, sentiment analysis, OpenAI summarization, and insight generation."
-
-Example Output:
-
-Analyzing sentiments...
-Generating summary...
+Setup & Execution1. Install DependenciesYou will need transformers, torch (as a backend for transformers), and openai.pip install transformers openai torch
+2. Set OpenAI API KeyOpen the Python script (e.g., warehouse_ai.py) and replace "YOUR_OPENAI_API_KEY_HERE" in the main() function with your actual OpenAI API key.3. Run the ScriptSave the complete code as warehouse_ai.py and run it from your terminal:python warehouse_ai.py
+Experiment DetailsInput Prompt"Write a Python program that fetches simulated warehouse robot alert data, uses Hugging Face Transformers to analyze sentiment for each alert, and uses OpenAI GPT (via API) to summarize the alerts. Based on sentiment and operational status, generate maintenance recommendations. The output should display individual alerts with sentiment scores, a summary of events, and a final recommendation. Use a modular structure with clearly defined functions for data fetching, sentiment analysis, OpenAI summarization, and insight generation."Example Output(Note: Output will vary slightly due to the randomized status and AI model responses.)Fetching warehouse data...
+Analyzing alert sentiments...
+Generating AI summary...
 
 ==============================
-=== Warehouse AI Report ===
+   Warehouse AI Report   
 ==============================
 
-Operational Status: Maintenance_Needed
+[Raw Alerts & Sentiment]
+  - Collision alert in Aisle B3 (NEGATIVE | Score: 0.99)
+  - Battery low on Robot #AX-12 (NEGATIVE | Score: 0.98)
+  - Package sorted in Zone 5 (POSITIVE | Score: 0.99)
 
---- Individual Alerts ---
-  [NEGATIVE] Collision alert in Aisle B3 (Score: 0.99)
-  [NEGATIVE] Battery low on Robot #AX-12 (Score: 0.99)
-  [POSITIVE] Package sorted in Zone 5 (Score: 0.99)
+[Operational Status]
+  - Operational
 
---- AI Summary ---
-  The alerts indicate two critical issues: a collision in Aisle B3 and a low battery on Robot #AX-12. A separate operation, package sorting in Zone 5, was completed successfully.
+[AI Summary]
+  - The system has issued two critical alerts for a collision in Aisle B3 and a low battery on Robot #AX-12. A successful package sort in Zone 5 was also recorded.
 
---- Recommendation ---
-  >>> Immediate maintenance required <<<
-
-
-Conclusion:
-
-The system successfully demonstrates:
-
-Multi-AI Integration
-
-Hugging Face for real-time, local sentiment analysis.
-
-OpenAI for high-level, contextual summarization.
-
-Automated Decision Making
-
-Priority-based alert classification using sentiment.
-
-Actionable maintenance recommendations derived from combined data.
-
-Scalable Architecture
-
-Modular design allows for easy addition or replacement of AI models or API integrations.
-
-The pattern is adaptable to other industrial IoT or data processing scenarios.
-
-Result: 
-The corresponding Prompt is executed successfully.
+[Actionable Recommendation]
+  - Immediate maintenance recommended (Multiple critical alerts).
+==============================
+ConclusionThe system successfully demonstrates:Multi-AI Integration:Hugging Face was used for real-time sentiment analysis on discrete alerts.OpenAI was used for high-level contextual summarization of all alerts.Automated Decision Making:The system automates the classification of alerts based on priority (sentiment).It generates actionable maintenance recommendations by synthesizing AI insights and system status.Scalable Architecture:The modular design allows for easy addition of other AI tools (e.g., a vision model for collision images) or new API data sources.The concept is adaptable to other industrial IoT or monitoring scenarios.Result: The corresponding Prompt is executed successfully.
